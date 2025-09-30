@@ -40,7 +40,7 @@ def round_to_len(value: np.floating[Any], digits: int = 4) -> Union[np.floating[
         return value
 
     left_digits = int(np.floor(np.log10(np.abs(value)))) + 1
-    precision = max(0, digits - left_digits)
+    precision = digits - left_digits
 
     rv = np.round(value, precision)
 
@@ -48,6 +48,7 @@ def round_to_len(value: np.floating[Any], digits: int = 4) -> Union[np.floating[
         return np.int64(rv)
     else:
         return rv
+
 
 
 def metrics_calc(x_data: NDArray, y_data: NDArray, y_predicted: NDArray, func: Callable) -> Tuple:

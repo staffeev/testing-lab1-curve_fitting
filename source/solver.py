@@ -1,13 +1,12 @@
 from collections import defaultdict
 from operator import itemgetter
+import pandas as pd
 import re
 from typing import Dict, List, Optional, Tuple
 from numpy.typing import NDArray
 import numpy as np
-
-# from components.celery.conf import app
 from source.build_objectives import parse_formula, FORMULA_START_TO_TYPE
-from curve_fitting import \
+from source.curve_fitting import \
     find_fit_and_metrics, replace_constant_placeholders_with_numbers, TRANSFORMATION_FUNC, FUNC_TYPE_INVERSION
 
 
@@ -23,7 +22,6 @@ EQS = {
 }
 
 
-# @app.task(name='solver.get_solutions')
 def get_solutions(
         context: Dict,
         x_list: List[float],
@@ -49,13 +47,14 @@ def get_solutions(
 
     if z_list is not None: # find for 3D also
         z_data = np.array(z_list)
+        print("AAAAAa")
         fr_fit_metrics = find_fit_and_metrics(np.vstack((x_data, y_data)), z_data, max_parameters, 3)
         if not use_only_max_dimension:
             fr_fit_metrics.extend(find_fit_and_metrics(x_data, y_data, max_parameters, 2))
     else:
         fr_fit_metrics = find_fit_and_metrics(x_data, y_data, max_parameters, 2)
 
-
+    print("BBBBBB")
     results = []
 
     for fun_record, fit, metrics in fr_fit_metrics:
@@ -75,9 +74,8 @@ def get_solutions(
 
     sorted_table = [dict(zip(columns, res)) for res in results]
 
-    import pandas as pd
-
-    pd.DataFrame(sorted_table).to_excel("RESULT.xlsx", index=False)
+    # save results
+    pd.DataFrame(sorted_table).to_csv("RESULT.csv", index=False)
 
     # we need rows_count best results of every function type we get (5 simple, 5 sqrt, etc)
     res_table = []

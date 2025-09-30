@@ -75,6 +75,6 @@ def parse_source(formulas: Iterable[str]):
 
 # Run this to update objectives.py file
 if __name__ == '__main__':
-    from formulas import FORMULAS
-
-    parse_source(FORMULAS)
+    import pandas as pd
+    filename = os.path.join(os.path.dirname(__file__), 'formulas.csv')
+    parse_source(pd.read_csv(filename)["formula"].tolist())

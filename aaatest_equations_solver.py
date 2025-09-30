@@ -2,7 +2,7 @@ import unittest
 import numpy.testing as npt
 import numpy as np
 
-from solver import get_solutions, evaluate_solver_equation
+from source.solver import get_solutions, evaluate_solver_equation
 
 
 class TestEquationsSolverRunAndEvaluation2D(unittest.TestCase):

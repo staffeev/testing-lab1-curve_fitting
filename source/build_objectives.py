@@ -41,7 +41,7 @@ def parse_formula(formula: str) -> Tuple[str, List[str], List[str]]:
     for exp, exp_to_replace in RULES.items():
         formula = sub(exp, exp_to_replace, formula)
     num_variables = len(set(map(lambda x: x[0], findall(r"[x-z]", formula))))
-    constants = list(map(lambda x: x[0], findall(r"[A-Z][+*/\^]", formula)))
+    constants = list(map(lambda x: x[0], findall(r"[A-Z][+*/\^]?", formula)))
     if num_variables == 3:
         formula = sub(r"X", r"xy[0]", sub(r"y", r"xy[1]", sub(r"x", r"X", formula)))
     return formula, num_variables, constants

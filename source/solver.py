@@ -47,14 +47,12 @@ def get_solutions(
 
     if z_list is not None: # find for 3D also
         z_data = np.array(z_list)
-        print("AAAAAa")
         fr_fit_metrics = find_fit_and_metrics(np.vstack((x_data, y_data)), z_data, max_parameters, 3)
         if not use_only_max_dimension:
             fr_fit_metrics.extend(find_fit_and_metrics(x_data, y_data, max_parameters, 2))
     else:
         fr_fit_metrics = find_fit_and_metrics(x_data, y_data, max_parameters, 2)
 
-    print("BBBBBB")
     results = []
 
     for fun_record, fit, metrics in fr_fit_metrics:
@@ -93,7 +91,6 @@ def get_solutions(
     return res_table
 
 
-# @app.task(name='solver.evaluate_solver_equation')
 def evaluate_solver_equation(context: Dict, equation: str, x_data: NDArray,
                              y_data: Optional[NDArray] = None) -> List[Tuple[float, float]]:
     """

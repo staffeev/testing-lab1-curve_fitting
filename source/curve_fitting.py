@@ -50,7 +50,6 @@ def round_to_len(value: np.floating[Any], digits: int = 4) -> Union[np.floating[
         return rv
 
 
-
 def metrics_calc(x_data: NDArray, y_data: NDArray, y_predicted: NDArray, func: Callable) -> Tuple:
     """
     Calculate function metrics

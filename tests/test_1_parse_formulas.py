@@ -76,7 +76,6 @@ def test_parse_formula_braces(formula, expected_parsed):
     ("CDZ", ["C", "D", "Z"]),
     ("aAbB", ["A", "B"]),
     ("", []),
-    # ("A+A*A+AAA", ["A"])  # TODO
 ])
 def test_parse_formula_constants(formula, expected_constants):
     _, _, constants = parse_formula(formula)

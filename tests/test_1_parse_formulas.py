@@ -33,15 +33,16 @@ def test_parse_formula_digits(formula, expected_parsed):
 
 
 @pytest.mark.parametrize("formula,expected_parsed", [
-    # ("e^x", "(np.e)**(x)"),  # TODO:
-    ("e^1.5", "(np.e)**(1.5)"),
-    # ("e^2", "(np.e)**(2)"),  # TODO:
-    ("z^-2", "(z)**(-2)"),
+    ("e^x", "((np.e)**(x))"),
+    ("e^1.5", "((np.e)**(1.5))"),
+    ("e^2", "((np.e)**(2))"),
+    ("z^-2", "((z)**(-2))"),
     ("x^(1)y^2.5x^-2", "(x)**((1))*(y)**(2.5)*(x)**(-2)"),
-    #("x^e", "(x)**(np.e)")  # TODO
+    ("x^e", "((x)**(np.e))")
 ])
 def test_parse_formula_pow(formula, expected_parsed):
     parsed, _, _ = parse_formula(formula)
+    print(parsed)
     assert parsed == expected_parsed
 
 

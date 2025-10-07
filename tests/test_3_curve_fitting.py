@@ -39,6 +39,7 @@ def test_round_to_len(value, digits, expected_value):
     ("a+a*a", ["a"], [7], "7+7*7"),
     ("a-b", ["a", "b"], [-2, 5], "-2-5"),
     ("a+b", ["a", "b"], [1.5, 2.75], "1.5+2.75"),
+    ("", [], [], "")
 ])
 def test_replace_constant_placeholders_with_numbers(formula, letters, numbers, expected):
     result = replace_constant_placeholders_with_numbers(formula, letters, numbers)

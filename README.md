@@ -1,5 +1,7 @@
-Работы выполнил: Стафеев Иван Алексееич (t.me/st_affeev)
+Работы выполнил: Стафеев Иван Алексееич (https://t.me/st_affeev)
+
 Проект: https://github.com/staffeev/curve_fitting
+
 Форк проекта с тестами: https://github.com/staffeev/testing-lab1-curve_fitting
 
 

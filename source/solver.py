@@ -100,49 +100,70 @@ def evaluate_solver_equation(context: Dict, equation: str, x_data: NDArray,
     :param equation: equation as a formula string (2d solver result)
     :param x_data: x-values to evaluate formula
     :param y_data: y-values to evaluate formula (for 3D curves)
-    :return: x:y-values or (x:y):z-values dict (formula eval result)
+    :return: list of tuples (x:y) or ((x, y):z)
     """
     left, right = equation.split('=')
     num_variables = len(set(map(lambda x: x[0], re.findall(r"[x-z]", equation))))
+
+    x_data = np.array(x_data, dtype=float)
+    y_data = np.array(y_data, dtype=float) if y_data is not None else None
+    vals = np.array([x_data]).T if num_variables == 2 else np.vstack((x_data, y_data)).T
+
     # check equation for power functions
     power_pattern = r'y\^\(?(-?\d+\.?\d*)\)?' if num_variables == 2 else r'z\^\(?(-?\d+\.?\d*)\)?'
-
-    if num_variables == 2:
-        power_pattern = r'y\^\(?(-?\d+\.?\d*)\)?'  # y^(number)= or y^number=
-        # check equation about lnx functions and filter negative values in that case
-        if 'lnx' in right:
-            x_data = x_data[x_data > 0]
-    else:
-        power_pattern = r'z\^\(?(-?\d+\.?\d*)\)?'  # z^(number)= or z^number=
-        xy = np.vstack((x_data, y_data))
-        # check equation about lnx and lny functions and filter negative values in that case
-        if 'lnx' in right:
-            xy = xy[:, np.where(xy[0] > 0)[0]]
-        if 'lny' in right:
-            xy = xy[:, np.where(xy[1] > 0)[0]]
-        x_data, y_data = xy[0], xy[1]
-
-    environment = {"np": np, "x": x_data, "y": y_data}
-
     match = re.fullmatch(power_pattern, left)
     additional_power = float(match.group(1)) if match else 1
 
-    # check is equation is exp function
-    exp_res = (left == "lny" or left == "lnz")
+    # check for exponent
+    exp_res = left in ("lny", "lnz")
 
+    # go through regex rules
     for exp, rep in EQS.items():
         right = re.sub(exp, rep, right)
 
+    # evaluate
     try:
-        eval_res = eval(right, environment)
-    except OverflowError:
+        with np.errstate(all='ignore'):
+            eval_res = eval(right, {"np": np, "x": x_data, "y": y_data})
+    except Exception:
         return []
 
     res = []
     vals = np.array([x_data]).T if num_variables == 2 else np.vstack((x_data, y_data)).T
-    for er, val in zip(list(eval_res), vals):
-        if exp_res:
-            res.append((*val, np.exp(er)))
-        elif not (additional_power == 2 and er < 0):
-            res.append((*val, er ** (1 / additional_power)))
+
+    for er, val in zip(eval_res, vals):
+        value = np.nan
+
+        # if er is not number or infinite
+        if er is None or not np.isfinite(er):
+            res.append((*val, np.nan))
+            continue
+
+        try:
+            # exp/ln
+            if exp_res:
+                value = np.exp(er)
+            # inv
+            elif additional_power < 0:
+                if er != 0:
+                    value = 1.0 / er
+            # sqrt
+            elif np.isclose(additional_power, 0.5):
+                if er >= 0:
+                    value = er ** 2
+            # square
+            elif np.isclose(additional_power, 2):
+                if er >= 0:
+                    value = np.sqrt(er)
+            # other pow
+            else:
+                if er >= 0 or not additional_power % 1 == 0:
+                    value = er ** (1 / additional_power)
+        except Exception:
+            value = np.nan
+
+        res.append((*val, value))
+    
     return res
+
+

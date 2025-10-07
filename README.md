@@ -401,8 +401,124 @@ FAILED tests/test_1_parse_formulas.py::test_parse_formula_pow[x^e-((x)**(np.e))]
 
 Было решено убрать это правило вообще и соответствущие тесты, так как заключение выражения в скобки не имеет смысла с точки зрения порядка математических операций (эта степень все равно выполнится раньше), а с учетом структуры формул во входных данных невозможны формулы, где в показателе степени будут сложные выражения, типа `y^(x/z)`.
 
+#### 2. Исправление ошибок с вычислением значений функции в точках
 
-### Исправление ошибок
+Проблема с функцией `evaluate_solver_equation` состояла в том, что она не проверяла область определения функции, которая поступает ей на вход. В ней определяется типа функции (sqrt, square и т.п.), в зависимости от которого происходит преобразование правой части (чтобы функция приняла вид `y=`, а не `y**(0.5)=`), но при таком преобразовании необходимо накладывать условие на область определения. Соответственно, функция была переписана так, что при некорректных значениях аргумента в качестве значения функции буде возвращен `np.nan`:
 
+```python
+def evaluate_solver_equation(context: Dict, equation: str, x_data: NDArray,
+                             y_data: Optional[NDArray] = None) -> List[Tuple[float, float]]:
+    """
+    Evaluate solver equation
+
+    :param context: Celery context
+    :param equation: equation as a formula string (2d solver result)
+    :param x_data: x-values to evaluate formula
+    :param y_data: y-values to evaluate formula (for 3D curves)
+    :return: list of tuples (x:y) or ((x, y):z)
+    """
+    left, right = equation.split('=')
+    num_variables = len(set(map(lambda x: x[0], re.findall(r"[x-z]", equation))))
+
+    x_data = np.array(x_data, dtype=float)
+    y_data = np.array(y_data, dtype=float) if y_data is not None else None
+    vals = np.array([x_data]).T if num_variables == 2 else np.vstack((x_data, y_data)).T
+
+    # check equation for power functions
+    power_pattern = r'y\^\(?(-?\d+\.?\d*)\)?' if num_variables == 2 else r'z\^\(?(-?\d+\.?\d*)\)?'
+    match = re.fullmatch(power_pattern, left)
+    additional_power = float(match.group(1)) if match else 1
+
+    # check for exponent
+    exp_res = left in ("lny", "lnz")
+
+    # go through regex rules
+    for exp, rep in EQS.items():
+        right = re.sub(exp, rep, right)
+
+    # evaluate
+    try:
+        with np.errstate(all='ignore'):
+            eval_res = eval(right, {"np": np, "x": x_data, "y": y_data})
+    except Exception:
+        return []
+
+    res = []
+    vals = np.array([x_data]).T if num_variables == 2 else np.vstack((x_data, y_data)).T
+
+    for er, val in zip(eval_res, vals):
+        value = np.nan
+
+        # if er is not number or infinite
+        if er is None or not np.isfinite(er):
+            res.append((*val, np.nan))
+            continue
+
+        try:
+            # exp/ln
+            if exp_res:
+                value = np.exp(er)
+            # inv
+            elif additional_power < 0:
+                if er != 0:
+                    value = 1.0 / er
+            # sqrt
+            elif np.isclose(additional_power, 0.5):
+                if er >= 0:
+                    value = er ** 2
+            # square
+            elif np.isclose(additional_power, 2):
+                if er >= 0:
+                    value = np.sqrt(er)
+            # other pow
+            else:
+                if er >= 0 or not additional_power % 1 == 0:
+                    value = er ** (1 / additional_power)
+        except Exception:
+            value = np.nan
+
+        res.append((*val, value))
+    
+    return res
+```
+
+В тестах для этой функции на граничные случаи кое-где были недочеты (забыл про nan), поэтому они были переписаны:
+```python
+# граничные случаи
+("lny=1+np.log(x)",
+    np.array([-1,0,1,2]), None,
+    [(-1, np.nan),
+    (0, np.nan),
+    (1, np.exp(1+np.log(1))),
+    (2, np.exp(1+np.log(2)))]
+),
+
+("y^2=-1+2*x",
+    np.array([0,0.5,1]), None,
+    [(0, np.nan),
+    (0.5, np.sqrt(-1+2*0.5)),
+    (1, np.sqrt(-1+2*1))]
+),
+
+("y^(0.5)=x-1",
+    np.array([0,0.5,1,2]), None,
+    [(0, np.nan),
+    (0.5, np.nan),
+    (1, np.sqrt(1-1)),
+    (2, np.sqrt(2-1))]
+),
+
+("y^(-1)=1/x",
+    np.array([-1,0,1,2]), None,
+    [(-1, 1/(-1)),
+    (0, np.nan),
+    (1, 1),
+    (2, 2)]
+),
+```
+
+В результате исправления теперь все тесты проходят. Имеются два предупреждения, возникающие на тестах граничных случаев в вычислении метрик, но так и должно быть (там деление на ноль).
+
+![запуски тестов 2](./img/run_tests_2.png)
 
 ### Анализ написанных тестов
